@@ -31,6 +31,11 @@ jobs:
 
       - name: Build with Next.js 🏗️
         run: npx next build
+      
+      - name: Debug output
+        run: |
+          ls -la
+          ls -la out || echo "out folder missing"
 
       - name: Upload artifact 📡
         uses: actions/upload-pages-artifact@v3
