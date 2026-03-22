@@ -6,6 +6,9 @@ import { TriviaGame } from "@/components/games/trivia-game"
 import { MathGame } from "@/components/games/math-game"
 import { WordGame } from "@/components/games/word-game"
 import { MemoryGame } from "@/components/games/memory-game"
+import { QuordleGame } from "@/components/games/quordle-game"
+import { WordRevealGame } from "@/components/games/word-reveal-game"
+import { LocationEmojiGame } from "@/components/games/location-emoji-game"
 
 interface GamePageProps {
   params: Promise<{ id: string }>
@@ -18,6 +21,9 @@ const gameComponents: Record<string, React.ComponentType> = {
   math: MathGame,
   word: WordGame,
   memory: MemoryGame,
+  quordle: QuordleGame,
+  "word-reveal": WordRevealGame,
+  "location-emoji": LocationEmojiGame,
 }
 
 export async function generateStaticParams() {
