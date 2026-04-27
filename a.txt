@@ -1,0 +1,51 @@
+import com.deque.html.axecore.selenium.AxeBuilder;
+import com.deque.html.axecore.results.Results;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.chrome.ChromeDriver;
+
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
+public class AxeTest {
+
+    public static void main(String[] args) throws Exception {
+
+        WebDriver driver = new ChromeDriver();
+        driver.get("https://your-site.com");
+
+        // Run axe-core scan
+        Results results = new AxeBuilder()
+                .analyze(driver);
+
+        // Convert to JSON
+        String json = results.toJson();
+
+        // Save JSON file (for your HTML viewer)
+        Files.write(
+                Paths.get("axe-report.json"),
+                json.getBytes()
+        );
+
+        driver.quit();
+
+        System.out.println("Saved axe report");
+    }
+}
+
+String jsWrapped =
+    "window.AXE_RESULTS = " + axeResultsJson + ";";
+
+Files.write(Paths.get("axe-report.js"), jsWrapped.getBytes());
+<script src="axe-report.js"></script>
+<script>
+  console.log(window.AXE_RESULTS);
+</script>
+
+<script>
+fetch('axe-report.json')
+  .then(res => res.json())
+  .then(data => {
+    window.AXE_RESULTS = data;
+    console.log("Axe loaded", data);
+  });
+</script>
