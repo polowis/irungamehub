@@ -1,0 +1,1465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Axe Accessibility Report Viewer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-primary: #0a0f14;
+      --bg-secondary: #0d1419;
+      --bg-card: #080c10;
+      --bg-element: #141d26;
+      --border-color: #1e2d3a;
+      --text-primary: #e2e8f0;
+      --text-secondary: #8b9eb3;
+      --text-muted: #546778;
+      --accent: #10b981;
+      --accent-light: #34d399;
+      --critical: #ef4444;
+      --critical-bg: rgba(239, 68, 68, 0.12);
+      --serious: #f97316;
+      --serious-bg: rgba(249, 115, 22, 0.12);
+      --moderate: #eab308;
+      --moderate-bg: rgba(234, 179, 8, 0.12);
+      --minor: #22c55e;
+      --minor-bg: rgba(34, 197, 94, 0.12);
+      --pass: #10b981;
+      --pass-bg: rgba(16, 185, 129, 0.12);
+      --incomplete: #06b6d4;
+      --incomplete-bg: rgba(6, 182, 212, 0.12);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    .app {
+      display: flex;
+      height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 280px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .sidebar-header {
+      padding: 1.25rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+    }
+
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--accent) 0%, #06b6d4 100%);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-icon svg {
+      width: 18px;
+      height: 18px;
+      fill: white;
+    }
+
+    .logo-text {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .logo-text span {
+      color: var(--accent-light);
+    }
+
+    /* Stats Summary */
+    .stats-summary {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .score-circle {
+      width: 100px;
+      height: 100px;
+      margin: 0 auto 1rem;
+      position: relative;
+    }
+
+    .score-circle svg {
+      transform: rotate(-90deg);
+      width: 100%;
+      height: 100%;
+    }
+
+    .score-bg {
+      fill: none;
+      stroke: var(--bg-element);
+      stroke-width: 8;
+    }
+
+    .score-progress {
+      fill: none;
+      stroke-width: 8;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.6s ease;
+    }
+
+    .score-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+
+    .score-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .score-label {
+      font-size: 0.625rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem;
+    }
+
+    .stat-item {
+      background: var(--bg-element);
+      border-radius: 8px;
+      padding: 0.75rem;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+      border: 1px solid transparent;
+    }
+
+    .stat-item:hover {
+      transform: translateY(-1px);
+    }
+
+    .stat-item.active {
+      border-color: var(--accent);
+      background: var(--incomplete-bg);
+    }
+
+    .stat-item.violations { border-left: 3px solid var(--critical); }
+    .stat-item.passes { border-left: 3px solid var(--pass); }
+    .stat-item.incomplete { border-left: 3px solid var(--incomplete); }
+    .stat-item.inapplicable { border-left: 3px solid var(--text-muted); }
+
+    .stat-count {
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+
+    .stat-item.violations .stat-count { color: var(--critical); }
+    .stat-item.passes .stat-count { color: var(--pass); }
+    .stat-item.incomplete .stat-count { color: var(--incomplete); }
+    .stat-item.inapplicable .stat-count { color: var(--text-muted); }
+
+    .stat-name {
+      font-size: 0.6875rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    /* Issue List in Sidebar */
+    .issue-nav {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.75rem;
+    }
+
+    .issue-nav-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-bottom: 0.25rem;
+    }
+
+    .issue-nav-item:hover {
+      background: var(--bg-element);
+    }
+
+    .issue-nav-item.active {
+      background: var(--bg-element);
+      border-left: 2px solid var(--accent);
+      margin-left: -2px;
+    }
+
+    .issue-severity {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-top: 0.375rem;
+      flex-shrink: 0;
+    }
+
+    .issue-severity.critical { background: var(--critical); }
+    .issue-severity.serious { background: var(--serious); }
+    .issue-severity.moderate { background: var(--moderate); }
+    .issue-severity.minor { background: var(--minor); }
+    .issue-severity.pass { background: var(--pass); }
+    .issue-severity.incomplete { background: var(--incomplete); }
+
+    .issue-nav-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .issue-nav-title {
+      font-size: 0.8125rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .issue-nav-count {
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+    }
+
+    /* Main Content */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .main-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+      background: var(--bg-secondary);
+    }
+
+    .main-title {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .main-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn {
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      border: none;
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #059669;
+    }
+
+    .btn-secondary {
+      background: var(--bg-element);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-card);
+      border-color: var(--text-muted);
+    }
+
+    .btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* Issue Detail Panel */
+    .issue-detail {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem;
+    }
+
+    .detail-header {
+      margin-bottom: 1.5rem;
+    }
+
+    .detail-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.25rem 0.625rem;
+      border-radius: 4px;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-bottom: 0.75rem;
+    }
+
+    .detail-badge.critical { background: var(--critical-bg); color: var(--critical); }
+    .detail-badge.serious { background: var(--serious-bg); color: var(--serious); }
+    .detail-badge.moderate { background: var(--moderate-bg); color: var(--moderate); }
+    .detail-badge.minor { background: var(--minor-bg); color: var(--minor); }
+    .detail-badge.pass { background: var(--pass-bg); color: var(--pass); }
+    .detail-badge.incomplete { background: var(--incomplete-bg); color: var(--incomplete); }
+
+    .detail-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .detail-description {
+      color: var(--text-secondary);
+      font-size: 0.9375rem;
+      line-height: 1.6;
+    }
+
+    .detail-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+    }
+
+    .meta-item a {
+      color: var(--accent-light);
+      text-decoration: none;
+    }
+
+    .meta-item a:hover {
+      text-decoration: underline;
+    }
+
+    /* Tags */
+    .tags-section {
+      margin-top: 1rem;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.375rem;
+    }
+
+    .tag {
+      padding: 0.25rem 0.5rem;
+      background: var(--bg-element);
+      border-radius: 4px;
+      font-size: 0.6875rem;
+      color: var(--text-secondary);
+    }
+
+    .tag.wcag {
+      background: rgba(6, 182, 212, 0.2);
+      color: #22d3ee;
+    }
+
+    /* Element Cards */
+    .elements-section {
+      margin-top: 1.5rem;
+    }
+
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .section-count {
+      background: var(--bg-element);
+      padding: 0.125rem 0.5rem;
+      border-radius: 10px;
+      font-size: 0.6875rem;
+    }
+
+    .element-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      margin-bottom: 0.75rem;
+      overflow: hidden;
+    }
+
+    .element-header {
+      padding: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .element-header:hover {
+      background: var(--bg-element);
+    }
+
+    .element-index {
+      width: 24px;
+      height: 24px;
+      background: var(--bg-element);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .element-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .element-target {
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--accent-light);
+      word-break: break-all;
+    }
+
+    .element-summary {
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+      margin-top: 0.375rem;
+    }
+
+    .chevron {
+      width: 20px;
+      height: 20px;
+      color: var(--text-muted);
+      transition: transform 0.2s;
+      flex-shrink: 0;
+    }
+
+    .element-card.expanded .chevron {
+      transform: rotate(180deg);
+    }
+
+    .element-content {
+      display: none;
+      padding: 0 1rem 1rem;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .element-card.expanded .element-content {
+      display: block;
+    }
+
+    /* Code Block */
+    .code-block {
+      background: var(--bg-primary);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-top: 1rem;
+      overflow-x: auto;
+    }
+
+    .code-label {
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+      letter-spacing: 0.03em;
+    }
+
+    .code-block code {
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .code-block code .tag { color: #22d3ee; }
+    .code-block code .attr { color: #67e8f9; }
+    .code-block code .value { color: #34d399; }
+
+    /* Fix Suggestions */
+    .fix-section {
+      margin-top: 1rem;
+    }
+
+    .fix-list {
+      list-style: none;
+    }
+
+    .fix-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.625rem 0;
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+    }
+
+    .fix-icon {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--pass-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 0.125rem;
+    }
+
+    .fix-icon svg {
+      width: 10px;
+      height: 10px;
+      stroke: var(--pass);
+    }
+
+    /* Upload Area */
+    .upload-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      padding: 2rem;
+    }
+
+    .upload-box {
+      width: 100%;
+      max-width: 500px;
+      padding: 3rem 2rem;
+      border: 2px dashed var(--border-color);
+      border-radius: 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .upload-box:hover,
+    .upload-box.dragover {
+      border-color: var(--accent);
+      background: var(--incomplete-bg);
+    }
+
+    .upload-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 1.5rem;
+      background: var(--bg-element);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .upload-icon svg {
+      width: 32px;
+      height: 32px;
+      stroke: var(--accent-light);
+    }
+
+    .upload-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .upload-text {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .upload-hint {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .upload-divider {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin: 1.5rem 0;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    .upload-divider::before,
+    .upload-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border-color);
+    }
+
+    /* Filter Pills */
+    .filter-bar {
+      padding: 0.75rem 1.25rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      gap: 0.375rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-pill {
+      padding: 0.375rem 0.75rem;
+      background: transparent;
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .filter-pill:hover {
+      border-color: var(--text-muted);
+      color: var(--text-primary);
+    }
+
+    .filter-pill.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    /* Empty State */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem;
+      text-align: center;
+      color: var(--text-muted);
+    }
+
+    .empty-state svg {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    /* Hidden */
+    .hidden {
+      display: none !important;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .app {
+        flex-direction: column;
+      }
+
+      .sidebar {
+        width: 100%;
+        max-height: 40vh;
+      }
+
+      .stats-summary {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .score-circle {
+        width: 60px;
+        height: 60px;
+        margin: 0;
+      }
+
+      .stats-grid {
+        flex: 1;
+      }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-primary);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <div class="logo-icon">
+            <svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <div class="logo-text">axe<span>Report</span></div>
+        </div>
+      </div>
+
+      <div class="stats-summary" id="stats-summary">
+        <div class="score-circle">
+          <svg viewBox="0 0 100 100">
+            <circle class="score-bg" cx="50" cy="50" r="42"/>
+            <circle class="score-progress" id="score-ring" cx="50" cy="50" r="42" stroke-dasharray="264" stroke-dashoffset="264"/>
+          </svg>
+          <div class="score-text">
+            <div class="score-value" id="score-value">--</div>
+            <div class="score-label">Score</div>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-item violations active" data-view="violations">
+            <div class="stat-count" id="stat-violations">0</div>
+            <div class="stat-name">Violations</div>
+          </div>
+          <div class="stat-item passes" data-view="passes">
+            <div class="stat-count" id="stat-passes">0</div>
+            <div class="stat-name">Passes</div>
+          </div>
+          <div class="stat-item incomplete" data-view="incomplete">
+            <div class="stat-count" id="stat-incomplete">0</div>
+            <div class="stat-name">Review</div>
+          </div>
+          <div class="stat-item inapplicable" data-view="inapplicable">
+            <div class="stat-count" id="stat-inapplicable">0</div>
+            <div class="stat-name">N/A</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-bar hidden" id="filter-bar">
+        <button class="filter-pill active" data-filter="all">All</button>
+        <button class="filter-pill" data-filter="critical">Critical</button>
+        <button class="filter-pill" data-filter="serious">Serious</button>
+        <button class="filter-pill" data-filter="moderate">Moderate</button>
+        <button class="filter-pill" data-filter="minor">Minor</button>
+      </div>
+
+      <nav class="issue-nav" id="issue-nav">
+        <!-- Issue items populated here -->
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+      <header class="main-header">
+        <h1 class="main-title" id="main-title">Accessibility Report</h1>
+        <div class="main-actions">
+          <button class="btn btn-secondary" id="load-sample-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+            Load Sample
+          </button>
+          <button class="btn btn-primary" id="upload-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Load Report
+          </button>
+        </div>
+      </header>
+
+      <div class="issue-detail" id="detail-panel">
+        <!-- Upload Area (shown initially) -->
+        <div class="upload-area" id="upload-area">
+          <div class="upload-box" id="upload-box">
+            <div class="upload-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M7 18a4.6 4.4 0 0 1 0-9 5 4.5 0 0 1 11 2h1a3.5 3 0 0 1 0 7h-1"/>
+                <polyline points="15 13 12 10 9 13"/>
+                <line x1="12" y1="10" x2="12" y2="21"/>
+              </svg>
+            </div>
+            <div class="upload-title">Drop your axe-core report here</div>
+            <div class="upload-text">or click to browse for a JSON file</div>
+            <div class="upload-hint">Accepts axe-core JSON output format</div>
+          </div>
+          <div class="upload-divider">or</div>
+          <button class="btn btn-secondary" id="load-sample-btn-2">Load Sample Report</button>
+          <input type="file" id="file-input" accept=".json" class="hidden">
+        </div>
+
+        <!-- Detail View (hidden initially) -->
+        <div id="detail-view" class="hidden">
+          <div class="detail-header">
+            <span class="detail-badge" id="detail-badge">Critical</span>
+            <h2 class="detail-title" id="detail-title">Issue Title</h2>
+            <p class="detail-description" id="detail-description">Issue description goes here.</p>
+
+            <div class="detail-meta">
+              <div class="meta-item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/></svg>
+                <span id="detail-rule">Rule ID</span>
+              </div>
+              <div class="meta-item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                <span id="detail-elements">0 elements</span>
+              </div>
+              <div class="meta-item">
+                <a href="#" id="detail-help-link" target="_blank">Learn more</a>
+              </div>
+            </div>
+
+            <div class="tags-section">
+              <div class="tags" id="detail-tags"></div>
+            </div>
+          </div>
+
+          <div class="elements-section">
+            <div class="section-title">
+              Affected Elements
+              <span class="section-count" id="elements-count">0</span>
+            </div>
+            <div id="elements-list">
+              <!-- Element cards populated here -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Sample axe-core report data
+    const sampleReport = {
+      testEngine: { name: "axe-core", version: "4.8.3" },
+      testRunner: { name: "axe" },
+      testEnvironment: {
+        userAgent: "Mozilla/5.0",
+        windowWidth: 1920,
+        windowHeight: 1080
+      },
+      timestamp: new Date().toISOString(),
+      url: "https://example.com",
+      violations: [
+        {
+          id: "color-contrast",
+          impact: "serious",
+          tags: ["wcag2aa", "wcag143", "cat.color"],
+          description: "Ensures the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds",
+          help: "Elements must meet minimum color contrast ratio thresholds",
+          helpUrl: "https://dequeuniversity.com/rules/axe/4.8/color-contrast",
+          nodes: [
+            {
+              target: ["#hero-subtitle"],
+              html: "<p id=\"hero-subtitle\" style=\"color: #999;\">Welcome to our website</p>",
+              failureSummary: "Fix any of the following:\n  Element has insufficient color contrast of 2.85 (foreground color: #999999, background color: #ffffff, font size: 14.0pt, font weight: normal). Expected contrast ratio of 4.5:1",
+              any: [{ message: "Element has insufficient color contrast of 2.85 (foreground color: #999999, background color: #ffffff)" }]
+            },
+            {
+              target: [".footer-link"],
+              html: "<a class=\"footer-link\" href=\"/privacy\">Privacy Policy</a>",
+              failureSummary: "Fix any of the following:\n  Element has insufficient color contrast of 3.2 (foreground color: #888888, background color: #f5f5f5)",
+              any: [{ message: "Element has insufficient color contrast of 3.2" }]
+            }
+          ]
+        },
+        {
+          id: "image-alt",
+          impact: "critical",
+          tags: ["wcag2a", "wcag111", "section508", "cat.text-alternatives"],
+          description: "Ensures <img> elements have alternate text or a role of none or presentation",
+          help: "Images must have alternate text",
+          helpUrl: "https://dequeuniversity.com/rules/axe/4.8/image-alt",
+          nodes: [
+            {
+              target: ["img.hero-image"],
+              html: "<img class=\"hero-image\" src=\"/images/hero.jpg\">",
+              failureSummary: "Fix any of the following:\n  Element does not have an alt attribute",
+              any: [{ message: "Element does not have an alt attribute" }]
+            },
+            {
+              target: ["img.product-thumb"],
+              html: "<img class=\"product-thumb\" src=\"/products/item1.png\">",
+              failureSummary: "Fix any of the following:\n  Element does not have an alt attribute",
+              any: [{ message: "Element does not have an alt attribute" }]
+            },
+            {
+              target: ["#logo img"],
+              html: "<img src=\"/logo.svg\">",
+              failureSummary: "Fix any of the following:\n  Element does not have an alt attribute",
+              any: [{ message: "Element does not have an alt attribute" }]
+            }
+          ]
+        },
+        {
+          id: "button-name",
+          impact: "critical",
+          tags: ["wcag2a", "wcag412", "section508", "cat.name-role-value"],
+          description: "Ensures buttons have discernible text",
+          help: "Buttons must have discernible text",
+          helpUrl: "https://dequeuniversity.com/rules/axe/4.8/button-name",
+          nodes: [
+            {
+              target: ["button.icon-btn"],
+              html: "<button class=\"icon-btn\"><svg>...</svg></button>",
+              failureSummary: "Fix any of the following:\n  Element does not have inner text that is visible to screen readers",
+              any: [{ message: "Element does not have inner text that is visible to screen readers" }]
+            }
+          ]
+        },
+        {
+          id: "link-name",
+          impact: "serious",
+          tags: ["wcag2a", "wcag412", "section508", "cat.name-role-value"],
+          description: "Ensures links have discernible text",
+          help: "Links must have discernible text",
+          helpUrl: "https://dequeuniversity.com/rules/axe/4.8/link-name",
+          nodes: [
+            {
+              target: ["a.social-icon"],
+              html: "<a class=\"social-icon\" href=\"https://twitter.com\"><svg>...</svg></a>",
+              failureSummary: "Fix any of the following:\n  Element does not have text that is visible to screen readers",
+              any: [{ message: "Element does not have text that is visible to screen readers" }]
+            }
+          ]
+        },
+        {
+          id: "html-has-lang",
+          impact: "serious",
+          tags: ["wcag2a", "wcag311", "cat.language"],
+          description: "Ensures every HTML document has a lang attribute",
+          help: "<html> element must have a lang attribute",
+          helpUrl: "https://dequeuniversity.com/rules/axe/4.8/html-has-lang",
+          nodes: [
+            {
+              target: ["html"],
+              html: "<html>",
+              failureSummary: "Fix any of the following:\n  The <html> element does not have a lang attribute",
+              any: [{ message: "The <html> element does not have a lang attribute" }]
+            }
+          ]
+        },
+        {
+          id: "label",
+          impact: "moderate",
+          tags: ["wcag2a", "wcag412", "section508", "cat.forms"],
+          description: "Ensures every form element has a label",
+          help: "Form elements must have labels",
+          helpUrl: "https://dequeuniversity.com/rules/axe/4.8/label",
+          nodes: [
+            {
+              target: ["input#email"],
+              html: "<input type=\"email\" id=\"email\" placeholder=\"Enter email\">",
+              failureSummary: "Fix any of the following:\n  Form element does not have an implicit (wrapped) <label>",
+              any: [{ message: "Form element does not have a label" }]
+            }
+          ]
+        }
+      ],
+      passes: [
+        {
+          id: "document-title",
+          impact: null,
+          tags: ["wcag2a", "wcag242", "cat.text-alternatives"],
+          description: "Ensures each HTML document contains a non-empty <title> element",
+          help: "Documents must have <title> element to aid in navigation",
+          helpUrl: "https://dequeuniversity.com/rules/axe/4.8/document-title",
+          nodes: [{ target: ["html"], html: "<html lang=\"en\">" }]
+        },
+        {
+          id: "meta-viewport",
+          impact: null,
+          tags: ["wcag2aa", "wcag144", "cat.sensory-and-visual-cues"],
+          description: "Ensures <meta name=\"viewport\"> does not disable text scaling and zooming",
+          help: "Zooming and scaling should not be disabled",
+          helpUrl: "https://dequeuniversity.com/rules/axe/4.8/meta-viewport",
+          nodes: [{ target: ["meta[name='viewport']"], html: "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">" }]
+        },
+        {
+          id: "heading-order",
+          impact: null,
+          tags: ["wcag2a", "best-practice"],
+          description: "Ensures the order of headings is semantically correct",
+          help: "Heading levels should only increase by one",
+          helpUrl: "https://dequeuniversity.com/rules/axe/4.8/heading-order",
+          nodes: [{ target: ["h1"], html: "<h1>Main Title</h1>" }]
+        },
+        {
+          id: "landmark-one-main",
+          impact: null,
+          tags: ["best-practice"],
+          description: "Ensures the document has a main landmark",
+          help: "Document should have one main landmark",
+          helpUrl: "https://dequeuniversity.com/rules/axe/4.8/landmark-one-main",
+          nodes: [{ target: ["main"], html: "<main>" }]
+        },
+        {
+          id: "region",
+          impact: null,
+          tags: ["best-practice"],
+          description: "Ensures all page content is contained by landmarks",
+          help: "All page content should be contained by landmarks",
+          helpUrl: "https://dequeuniversity.com/rules/axe/4.8/region",
+          nodes: [{ target: ["body"], html: "<body>" }]
+        }
+      ],
+      incomplete: [
+        {
+          id: "color-contrast-enhanced",
+          impact: "moderate",
+          tags: ["wcag2aaa", "wcag146", "cat.color"],
+          description: "Ensures the contrast between foreground and background colors meets WCAG 2 AAA enhanced contrast ratio thresholds",
+          help: "Elements must meet enhanced color contrast ratio thresholds",
+          helpUrl: "https://dequeuniversity.com/rules/axe/4.8/color-contrast-enhanced",
+          nodes: [
+            {
+              target: [".card-description"],
+              html: "<p class=\"card-description\">Product description text here</p>",
+              failureSummary: "Check any of the following:\n  Unable to determine contrast ratio",
+              any: [{ message: "Unable to determine if element has sufficient color contrast" }]
+            }
+          ]
+        }
+      ],
+      inapplicable: [
+        {
+          id: "accesskeys",
+          impact: null,
+          tags: ["wcag2a", "best-practice"],
+          description: "Ensures every accesskey attribute value is unique",
+          help: "accesskey attribute value should be unique",
+          helpUrl: "https://dequeuniversity.com/rules/axe/4.8/accesskeys",
+          nodes: []
+        },
+        {
+          id: "area-alt",
+          impact: null,
+          tags: ["wcag2a", "wcag111", "section508"],
+          description: "Ensures <area> elements of image maps have alternate text",
+          help: "Active <area> elements must have alternate text",
+          helpUrl: "https://dequeuniversity.com/rules/axe/4.8/area-alt",
+          nodes: []
+        },
+        {
+          id: "audio-caption",
+          impact: null,
+          tags: ["wcag2a", "wcag121", "section508"],
+          description: "Ensures <audio> elements have captions",
+          help: "<audio> elements must have a captions track",
+          helpUrl: "https://dequeuniversity.com/rules/axe/4.8/audio-caption",
+          nodes: []
+        }
+      ]
+    };
+
+    // State
+    let currentReport = null;
+    let currentView = 'violations';
+    let currentFilter = 'all';
+    let selectedIssue = null;
+
+    // DOM Elements
+    const uploadArea = document.getElementById('upload-area');
+    const uploadBox = document.getElementById('upload-box');
+    const fileInput = document.getElementById('file-input');
+    const detailView = document.getElementById('detail-view');
+    const issueNav = document.getElementById('issue-nav');
+    const filterBar = document.getElementById('filter-bar');
+
+    // Initialize
+    function init() {
+      setupEventListeners();
+    }
+
+    function setupEventListeners() {
+      // File upload
+      uploadBox.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', handleFileSelect);
+
+      // Drag and drop
+      uploadBox.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadBox.classList.add('dragover');
+      });
+      uploadBox.addEventListener('dragleave', () => {
+        uploadBox.classList.remove('dragover');
+      });
+      uploadBox.addEventListener('drop', handleDrop);
+
+      // Load sample buttons
+      document.getElementById('load-sample-btn').addEventListener('click', loadSampleReport);
+      document.getElementById('load-sample-btn-2').addEventListener('click', loadSampleReport);
+      document.getElementById('upload-btn').addEventListener('click', () => fileInput.click());
+
+      // Stat items (view switching)
+      document.querySelectorAll('.stat-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const view = item.dataset.view;
+          switchView(view);
+        });
+      });
+
+      // Filter pills
+      document.querySelectorAll('.filter-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+          currentFilter = pill.dataset.filter;
+          document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+          pill.classList.add('active');
+          renderIssueNav();
+        });
+      });
+    }
+
+    function handleFileSelect(e) {
+      const file = e.target.files[0];
+      if (file) loadFile(file);
+    }
+
+    function handleDrop(e) {
+      e.preventDefault();
+      uploadBox.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file) loadFile(file);
+    }
+
+    function loadFile(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const report = JSON.parse(e.target.result);
+          loadReport(report);
+        } catch (err) {
+          alert('Invalid JSON file. Please upload a valid axe-core report.');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function loadSampleReport() {
+      loadReport(sampleReport);
+    }
+
+    function loadReport(report) {
+      currentReport = report;
+      updateStats();
+      switchView('violations');
+      uploadArea.classList.add('hidden');
+      detailView.classList.remove('hidden');
+
+      // Update title
+      if (report.url) {
+        document.getElementById('main-title').textContent = new URL(report.url).hostname;
+      }
+    }
+
+    function updateStats() {
+      const violations = currentReport.violations?.length || 0;
+      const passes = currentReport.passes?.length || 0;
+      const incomplete = currentReport.incomplete?.length || 0;
+      const inapplicable = currentReport.inapplicable?.length || 0;
+
+      document.getElementById('stat-violations').textContent = violations;
+      document.getElementById('stat-passes').textContent = passes;
+      document.getElementById('stat-incomplete').textContent = incomplete;
+      document.getElementById('stat-inapplicable').textContent = inapplicable;
+
+      // Calculate score (simple formula: passes / (passes + violations) * 100)
+      const total = passes + violations;
+      const score = total > 0 ? Math.round((passes / total) * 100) : 100;
+
+      document.getElementById('score-value').textContent = score;
+
+      // Update score ring
+      const ring = document.getElementById('score-ring');
+      const circumference = 264;
+      const offset = circumference - (score / 100) * circumference;
+      ring.style.strokeDashoffset = offset;
+
+      // Color based on score
+      let color = '#059669'; // green
+      if (score < 50) color = '#dc2626';
+      else if (score < 75) color = '#ea580c';
+      else if (score < 90) color = '#ca8a04';
+      ring.style.stroke = color;
+      document.getElementById('score-value').style.color = color;
+    }
+
+    function switchView(view) {
+      currentView = view;
+      selectedIssue = null;
+
+      // Update active state
+      document.querySelectorAll('.stat-item').forEach(item => {
+        item.classList.toggle('active', item.dataset.view === view);
+      });
+
+      // Show/hide filter bar (only for violations)
+      filterBar.classList.toggle('hidden', view !== 'violations');
+
+      renderIssueNav();
+
+      // Select first issue
+      const issues = getFilteredIssues();
+      if (issues.length > 0) {
+        selectIssue(issues[0], 0);
+      } else {
+        detailView.innerHTML = `
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <div>No ${view} found</div>
+          </div>
+        `;
+      }
+    }
+
+    function getFilteredIssues() {
+      const issues = currentReport[currentView] || [];
+      if (currentView !== 'violations' || currentFilter === 'all') {
+        return issues;
+      }
+      return issues.filter(issue => issue.impact === currentFilter);
+    }
+
+    function renderIssueNav() {
+      const issues = getFilteredIssues();
+
+      if (issues.length === 0) {
+        issueNav.innerHTML = `
+          <div class="empty-state">
+            <div>No items</div>
+          </div>
+        `;
+        return;
+      }
+
+      issueNav.innerHTML = issues.map((issue, index) => {
+        const impact = issue.impact || (currentView === 'passes' ? 'pass' : 'incomplete');
+        const nodeCount = issue.nodes?.length || 0;
+
+        return `
+          <div class="issue-nav-item ${selectedIssue === issue ? 'active' : ''}" data-index="${index}">
+            <div class="issue-severity ${impact}"></div>
+            <div class="issue-nav-content">
+              <div class="issue-nav-title">${escapeHtml(issue.help || issue.id)}</div>
+              <div class="issue-nav-count">${nodeCount} element${nodeCount !== 1 ? 's' : ''}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Add click listeners
+      issueNav.querySelectorAll('.issue-nav-item').forEach((item, index) => {
+        item.addEventListener('click', () => selectIssue(issues[index], index));
+      });
+    }
+
+    function selectIssue(issue, index) {
+      selectedIssue = issue;
+
+      // Update nav active state
+      issueNav.querySelectorAll('.issue-nav-item').forEach((item, i) => {
+        item.classList.toggle('active', i === index);
+      });
+
+      renderIssueDetail(issue);
+    }
+
+    function renderIssueDetail(issue) {
+      const impact = issue.impact || (currentView === 'passes' ? 'pass' : 'incomplete');
+      const nodes = issue.nodes || [];
+
+      detailView.innerHTML = `
+        <div class="detail-header">
+          <span class="detail-badge ${impact}">${impact || 'info'}</span>
+          <h2 class="detail-title">${escapeHtml(issue.help || issue.id)}</h2>
+          <p class="detail-description">${escapeHtml(issue.description || '')}</p>
+
+          <div class="detail-meta">
+            <div class="meta-item">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/></svg>
+              <span>${escapeHtml(issue.id)}</span>
+            </div>
+            <div class="meta-item">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              <span>${nodes.length} element${nodes.length !== 1 ? 's' : ''}</span>
+            </div>
+            ${issue.helpUrl ? `
+              <div class="meta-item">
+                <a href="${escapeHtml(issue.helpUrl)}" target="_blank" rel="noopener">Learn more</a>
+              </div>
+            ` : ''}
+          </div>
+
+          <div class="tags-section">
+            <div class="tags">
+              ${(issue.tags || []).map(tag => `
+                <span class="tag ${tag.startsWith('wcag') ? 'wcag' : ''}">${escapeHtml(tag)}</span>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+
+        ${nodes.length > 0 ? `
+          <div class="elements-section">
+            <div class="section-title">
+              Affected Elements
+              <span class="section-count">${nodes.length}</span>
+            </div>
+            <div id="elements-list">
+              ${nodes.map((node, i) => renderElementCard(node, i)).join('')}
+            </div>
+          </div>
+        ` : ''}
+      `;
+
+      // Add expand listeners
+      detailView.querySelectorAll('.element-header').forEach(header => {
+        header.addEventListener('click', () => {
+          header.closest('.element-card').classList.toggle('expanded');
+        });
+      });
+    }
+
+    function renderElementCard(node, index) {
+      const target = Array.isArray(node.target) ? node.target.join(' > ') : node.target;
+      const fixes = parseFailureSummary(node.failureSummary);
+
+      return `
+        <div class="element-card">
+          <div class="element-header">
+            <span class="element-index">${index + 1}</span>
+            <div class="element-info">
+              <div class="element-target">${escapeHtml(target)}</div>
+              ${node.any?.[0]?.message ? `
+                <div class="element-summary">${escapeHtml(node.any[0].message)}</div>
+              ` : ''}
+            </div>
+            <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </div>
+          <div class="element-content">
+            ${node.html ? `
+              <div class="code-block">
+                <div class="code-label">Element HTML</div>
+                <code>${highlightHtml(node.html)}</code>
+              </div>
+            ` : ''}
+
+            ${fixes.length > 0 ? `
+              <div class="fix-section">
+                <div class="code-label">How to Fix</div>
+                <ul class="fix-list">
+                  ${fixes.map(fix => `
+                    <li class="fix-item">
+                      <span class="fix-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                          <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                      </span>
+                      <span>${escapeHtml(fix)}</span>
+                    </li>
+                  `).join('')}
+                </ul>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    function parseFailureSummary(summary) {
+      if (!summary) return [];
+      return summary
+        .split('\n')
+        .filter(line => line.trim().startsWith('Fix') || line.trim().startsWith('Element'))
+        .map(line => line.replace(/^(Fix any of the following:|Fix all of the following:)\s*/i, '').trim())
+        .filter(line => line.length > 0);
+    }
+
+    function highlightHtml(html) {
+      return escapeHtml(html)
+        .replace(/(&lt;\/?)([\w-]+)/g, '$1<span class="tag">$2</span>')
+        .replace(/([\w-]+)(=)/g, '<span class="attr">$1</span>$2')
+        .replace(/(&quot;[^&]*&quot;)/g, '<span class="value">$1</span>');
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Initialize on load
+    init();
+  </script>
+</body>
+</html>
